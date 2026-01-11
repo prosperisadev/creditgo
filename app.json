@@ -32,6 +32,10 @@
         "android.permission.CAMERA",
         "android.permission.READ_SMS",
         "android.permission.RECEIVE_SMS",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.CAMERA",
+        "android.permission.READ_SMS",
+        "android.permission.RECEIVE_SMS",
         "android.permission.RECORD_AUDIO"
       ]
     },
@@ -60,6 +64,12 @@
       "eas": {
         "projectId": "779517ca-a654-4a8e-9e95-c88ef8cb042b"
       }
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/779517ca-a654-4a8e-9e95-c88ef8cb042b"
     }
   }
 }
