@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { View, Text, ScrollView, KeyboardAvoidingView, Platform, TouchableOpacity } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, ScrollView, KeyboardAvoidingView, Platform, TouchableOpacity, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { 
@@ -10,7 +10,9 @@ import {
   MessageSquare,
   Info,
   ToggleLeft,
-  ToggleRight
+  ToggleRight,
+  Smartphone,
+  CheckCircle2
 } from 'lucide-react-native';
 import { Button, Input, SimpleProgress } from '../../src/components';
 import { useAppStore } from '../../src/store';
@@ -21,6 +23,12 @@ import {
   analyzeSMSTransactions,
   buildFinancialProfile 
 } from '../../src/utils';
+import {
+  isSmsReadingAvailable,
+  analyzeRealSms,
+  requestSmsPermission,
+  hasSmsPermission
+} from '../../src/services/smsService';
 
 export default function IncomeScreen() {
   const router = useRouter();
@@ -36,6 +44,30 @@ export default function IncomeScreen() {
   const [payDay, setPayDay] = useState('');
   const [incomeError, setIncomeError] = useState('');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [smsAvailable, setSmsAvailable] = useState(false);
+  const [smsPermissionGranted, setSmsPermissionGranted] = useState(false);
+
+  // Check if real SMS reading is available on mount
+  useEffect(() => {
+    const checkSmsAvailability = async () => {
+      const available = await isSmsReadingAvailable();
+      setSmsAvailable(available);
+      
+      if (available) {
+        const hasPermission = await hasSmsPermission();
+        setSmsPermissionGranted(hasPermission);
+      }
+    };
+    checkSmsAvailability();
+  }, []);
+
+  const handleRequestSmsPermission = async () => {
+    const granted = await requestSmsPermission();
+    setSmsPermissionGranted(granted);
+    if (granted) {
+      Alert.alert('Permission Granted', 'SMS access enabled. Your bank alerts will be analyzed for a more accurate credit score.');
+    }
+  };
 
   const formatIncomeInput = (text: string) => {
     // Remove non-digits
@@ -61,17 +93,33 @@ export default function IncomeScreen() {
 
     setIsAnalyzing(true);
 
-    // Simulate SMS analysis
-    await new Promise(resolve => setTimeout(resolve, 1500));
-
     let smsAnalysis;
-    
-    if (isDemoMode) {
-      // Use demo SMS data
+    let transactions: any[] = [];
+
+    // Try real SMS first if available and permission granted
+    if (smsAvailable && smsPermissionGranted && !isDemoMode) {
+      const result = await analyzeRealSms();
+      if (result.success && result.transactions.length > 0) {
+        transactions = result.transactions;
+        smsAnalysis = analyzeSMSTransactions(transactions);
+        setTransactions(transactions);
+      } else {
+        // Fall back to manual if SMS reading fails
+        Alert.alert(
+          'SMS Analysis',
+          result.error || 'Could not read SMS. Using your stated income for calculations.'
+        );
+      }
+    } else if (isDemoMode) {
+      // Demo mode - use simulated data
+      await new Promise(resolve => setTimeout(resolve, 1500));
       const demoMessages = getDemoSMSData();
-      const transactions = parseSMSTransactions(demoMessages);
+      transactions = parseSMSTransactions(demoMessages);
       smsAnalysis = analyzeSMSTransactions(transactions);
       setTransactions(transactions);
+    } else {
+      // No SMS available - just use stated income
+      await new Promise(resolve => setTimeout(resolve, 1000));
     }
 
     // Build financial profile
@@ -90,7 +138,7 @@ export default function IncomeScreen() {
     });
     updateVerificationStatus({ 
       income: true,
-      smsPermission: isDemoMode 
+      smsPermission: smsPermissionGranted || isDemoMode 
     });
     setFinancialProfile(profile);
 
@@ -166,6 +214,37 @@ export default function IncomeScreen() {
               <ToggleLeft size={28} color="#94a3b8" />
             )}
           </TouchableOpacity>
+
+          {/* Real SMS Permission - Only show on Android with dev build */}
+          {smsAvailable && !isDemoMode && (
+            <TouchableOpacity
+              onPress={handleRequestSmsPermission}
+              disabled={smsPermissionGranted}
+              className={`
+                flex-row items-center justify-between p-4 rounded-xl mb-6
+                ${smsPermissionGranted ? 'bg-primary-50 border-2 border-primary-200' : 'bg-accent-50 border-2 border-accent-200'}
+              `}
+              activeOpacity={0.7}
+            >
+              <View className="flex-row items-center flex-1">
+                {smsPermissionGranted ? (
+                  <CheckCircle2 size={20} color="#16a34a" />
+                ) : (
+                  <Smartphone size={20} color="#3b82f6" />
+                )}
+                <View className="ml-3 flex-1">
+                  <Text className={`font-medium ${smsPermissionGranted ? 'text-primary-700' : 'text-accent-700'}`}>
+                    {smsPermissionGranted ? 'SMS Access Enabled ✓' : 'Enable SMS Analysis'}
+                  </Text>
+                  <Text className={`text-xs ${smsPermissionGranted ? 'text-primary-600' : 'text-accent-600'}`}>
+                    {smsPermissionGranted 
+                      ? 'Your bank alerts will be analyzed automatically' 
+                      : 'Tap to allow reading bank SMS alerts for better accuracy'}
+                  </Text>
+                </View>
+              </View>
+            </TouchableOpacity>
+          )}
 
           {/* Income Input */}
           <Input
