@@ -29,10 +29,8 @@ export default function IncomeScreen() {
   const setFinancialProfile = useAppStore((state) => state.setFinancialProfile);
   const setTransactions = useAppStore((state) => state.setTransactions);
   const user = useAppStore((state) => state.user);
-  const { isDemoMode, toggleDemoMode } = useAppStore((state) => ({
-    isDemoMode: state.isDemoMode,
-    toggleDemoMode: state.toggleDemoMode,
-  }));
+  const isDemoMode = useAppStore((state) => state.isDemoMode);
+  const toggleDemoMode = useAppStore((state) => state.toggleDemoMode);
   
   const [income, setIncome] = useState('');
   const [payDay, setPayDay] = useState('');

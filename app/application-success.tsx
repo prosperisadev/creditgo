@@ -1,34 +1,31 @@
-import React, { useEffect } from 'react';
-import { View, Text } from 'react-native';
+import React, { useEffect, useRef } from 'react';
+import { View, Text, Animated } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { CheckCircle, ArrowRight, Bell, Clock } from 'lucide-react-native';
 import { Button } from '../src/components';
-import Animated, { 
-  useSharedValue, 
-  useAnimatedStyle, 
-  withSpring,
-  withDelay 
-} from 'react-native-reanimated';
 
 export default function ApplicationSuccessScreen() {
   const router = useRouter();
   
-  const scale = useSharedValue(0);
-  const opacity = useSharedValue(0);
+  const scaleAnim = useRef(new Animated.Value(0)).current;
+  const opacityAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    scale.value = withSpring(1, { damping: 10 });
-    opacity.value = withDelay(300, withSpring(1));
+    Animated.parallel([
+      Animated.spring(scaleAnim, {
+        toValue: 1,
+        friction: 5,
+        useNativeDriver: true,
+      }),
+      Animated.timing(opacityAnim, {
+        toValue: 1,
+        duration: 500,
+        delay: 300,
+        useNativeDriver: true,
+      }),
+    ]).start();
   }, []);
-
-  const iconStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }],
-  }));
-
-  const contentStyle = useAnimatedStyle(() => ({
-    opacity: opacity.value,
-  }));
 
   const handleGoHome = () => {
     router.replace('/(tabs)');
@@ -42,14 +39,14 @@ export default function ApplicationSuccessScreen() {
     <SafeAreaView className="flex-1 bg-white">
       <View className="flex-1 items-center justify-center px-6">
         {/* Success Icon */}
-        <Animated.View style={iconStyle}>
+        <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
           <View className="w-28 h-28 bg-primary-100 rounded-full items-center justify-center mb-6">
             <CheckCircle size={64} color="#22c55e" />
           </View>
         </Animated.View>
 
         {/* Content */}
-        <Animated.View style={contentStyle} className="items-center">
+        <Animated.View style={{ opacity: opacityAnim }} className="items-center">
           <Text className="text-3xl font-bold text-dark-800 text-center mb-2">
             Application Sent! 🎉
           </Text>

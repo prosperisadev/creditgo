@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
+import { useShallow } from 'zustand/shallow';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { 
   User, 
@@ -130,15 +131,19 @@ export const useAppStore = create<AppState>()(
 
 // Selector hooks for better performance
 export const useUser = () => useAppStore((state) => state.user);
-export const useOnboarding = () => useAppStore((state) => ({
-  step: state.onboardingStep,
-  setStep: state.setOnboardingStep,
-  isComplete: state.isOnboardingComplete,
-  complete: state.completeOnboarding,
-}));
+export const useOnboarding = () => useAppStore(
+  useShallow((state) => ({
+    step: state.onboardingStep,
+    setStep: state.setOnboardingStep,
+    isComplete: state.isOnboardingComplete,
+    complete: state.completeOnboarding,
+  }))
+);
 export const useFinancialProfile = () => useAppStore((state) => state.financialProfile);
 export const useVerificationStatus = () => useAppStore((state) => state.verificationStatus);
-export const useDemoMode = () => useAppStore((state) => ({
-  isDemoMode: state.isDemoMode,
-  toggle: state.toggleDemoMode,
-}));
+export const useDemoMode = () => useAppStore(
+  useShallow((state) => ({
+    isDemoMode: state.isDemoMode,
+    toggle: state.toggleDemoMode,
+  }))
+);
