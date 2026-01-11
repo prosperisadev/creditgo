@@ -31,12 +31,7 @@
       "permissions": [
         "android.permission.CAMERA",
         "android.permission.READ_SMS",
-        "android.permission.RECEIVE_SMS",
-        "android.permission.RECORD_AUDIO",
-        "android.permission.CAMERA",
-        "android.permission.READ_SMS",
-        "android.permission.RECEIVE_SMS",
-        "android.permission.RECORD_AUDIO"
+        "android.permission.RECEIVE_SMS"
       ]
     },
     "web": {
@@ -45,7 +40,6 @@
     },
     "plugins": [
       "expo-router",
-      "expo-dev-client",
       [
         "expo-camera",
         {
@@ -57,7 +51,8 @@
         {
           "photosPermission": "CreditGo needs access to your photos for document verification."
         }
-      ]
+      ],
+      "./plugins/withAndroidSizeOptimization.js"
     ],
     "extra": {
       "router": {},
