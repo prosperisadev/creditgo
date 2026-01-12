@@ -22,33 +22,28 @@ import {
   X,
   CreditCard,
   Building,
-  Smartphone
+  Smartphone,
+  ExternalLink
 } from 'lucide-react-native';
-import { useAppStore } from '../../src/store';
-import { formatNaira } from '../../src/constants';
-
-// Demo Paystack configuration
-const PAYSTACK_PUBLIC_KEY = 'pk_test_xxxxxxxxxxxxxxxxxxxxxxxx';
+import { useAppStore, useSavings } from '../../src/store';
+import { formatNaira, PAYSTACK_CONFIG } from '../../src/constants';
 
 export default function WalletScreen() {
   const financialProfile = useAppStore((state) => state.financialProfile);
   const transactions = useAppStore((state) => state.transactions);
   const user = useAppStore((state) => state.user);
+  
+  // Use persisted savings from store
+  const { balance: savingsBalance, transactions: savingsHistory, addDeposit } = useSavings();
 
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [saveAmount, setSaveAmount] = useState('');
-  const [savingsBalance, setSavingsBalance] = useState(0);
-  const [savingsHistory, setSavingsHistory] = useState<Array<{
-    id: string;
-    amount: number;
-    date: Date;
-    status: 'successful' | 'pending';
-  }>>([]);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const safeAmount = financialProfile?.safeMonthlyRepayment || 0;
   const monthlyIncome = user?.monthlyIncome || 0;
   
-  // Suggested saving is 10% of safe amount (to build towards financing)
+  // Suggested saving is 50% of safe amount (to build towards financing)
   const suggestedSaving = Math.floor(safeAmount * 0.5);
 
   // Calculate totals from transactions
@@ -79,33 +74,36 @@ export default function WalletScreen() {
       return;
     }
 
-    // In production, this would open Paystack checkout
-    // For demo, we simulate the flow
+    setIsProcessing(true);
+
+    // Simulate Paystack payment flow
+    // In production, this would open Paystack checkout via react-native-paystack-webview
     Alert.alert(
-      'Paystack Payment',
-      `You're about to save ${formatNaira(amount)} via Paystack.\n\nIn production, this opens the Paystack payment page.\n\nFor demo, we'll simulate a successful payment.`,
+      '💳 Paystack Payment',
+      `You're about to save ${formatNaira(amount)} via Paystack.\n\nIn production, this opens the secure Paystack checkout.\n\nFor demo, we'll simulate a successful payment.`,
       [
         {
           text: 'Cancel',
           style: 'cancel',
+          onPress: () => setIsProcessing(false),
         },
         {
-          text: 'Simulate Payment',
+          text: 'Pay with Paystack',
           onPress: () => {
-            // Simulate successful payment
-            setSavingsBalance(prev => prev + amount);
-            setSavingsHistory(prev => [{
-              id: `sav_${Date.now()}`,
-              amount,
-              date: new Date(),
-              status: 'successful',
-            }, ...prev]);
-            setSaveAmount('');
-            setShowSaveModal(false);
-            Alert.alert(
-              '✅ Saved Successfully!',
-              `${formatNaira(amount)} has been added to your savings.\n\nTotal savings: ${formatNaira(savingsBalance + amount)}`
-            );
+            // Simulate payment processing
+            setTimeout(() => {
+              // Add to persisted savings
+              addDeposit(amount, `PAY_${Date.now()}`);
+              
+              setSaveAmount('');
+              setShowSaveModal(false);
+              setIsProcessing(false);
+              
+              Alert.alert(
+                '✅ Payment Successful!',
+                `${formatNaira(amount)} has been added to your savings.\n\nTotal savings: ${formatNaira(savingsBalance + amount)}\n\nReference: PAY_${Date.now()}`
+              );
+            }, 1500);
           },
         },
       ]
@@ -113,8 +111,6 @@ export default function WalletScreen() {
   };
 
   const openPaystackDemo = () => {
-    // In production: integrate react-native-paystack-webview
-    // For demo, show info about how it would work
     Linking.openURL('https://paystack.com/demo/checkout');
   };
 
@@ -243,9 +239,11 @@ export default function WalletScreen() {
                     <ArrowDownLeft size={18} color="#22c55e" />
                   </View>
                   <View className="flex-1">
-                    <Text className="text-slate-900 font-medium">Savings Deposit</Text>
+                    <Text className="text-slate-900 font-medium">
+                      {item.type === 'deposit' ? 'Savings Deposit' : 'Withdrawal'}
+                    </Text>
                     <Text className="text-slate-500 text-xs">
-                      {item.date.toLocaleDateString('en-NG', {
+                      {new Date(item.createdAt).toLocaleDateString('en-NG', {
                         day: 'numeric',
                         month: 'short',
                         hour: '2-digit',
@@ -253,8 +251,8 @@ export default function WalletScreen() {
                       })}
                     </Text>
                   </View>
-                  <Text className="text-green-600 font-bold">
-                    +{formatNaira(item.amount)}
+                  <Text className={item.type === 'deposit' ? 'text-green-600 font-bold' : 'text-red-600 font-bold'}>
+                    {item.type === 'deposit' ? '+' : '-'}{formatNaira(item.amount)}
                   </Text>
                 </View>
               ))}

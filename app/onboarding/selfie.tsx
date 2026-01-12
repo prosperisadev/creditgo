@@ -134,10 +134,10 @@ export default function SelfieScreen() {
             className="p-0 mr-4"
           />
           <View className="flex-1">
-            <SimpleProgress current={2} total={5} />
+            <SimpleProgress current={2} total={6} />
           </View>
         </View>
-        <Text className="text-sm text-gray-400">Step 2 of 5</Text>
+        <Text className="text-sm text-gray-400">Step 2 of 6</Text>
       </View>
 
       {/* Camera or Photo Preview */}

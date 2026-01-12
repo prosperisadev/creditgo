@@ -8,8 +8,16 @@ import {
   OnboardingStep, 
   VerificationStatus,
   LoanApplication,
-  SMSTransaction 
+  SMSTransaction,
+  SavingsTransaction
 } from '../types';
+
+// Savings state interface
+interface SavingsState {
+  balance: number;
+  transactions: SavingsTransaction[];
+  monthlyGoal: number;
+}
 
 interface AppState {
   // User State
@@ -39,6 +47,11 @@ interface AppState {
   applications: LoanApplication[];
   addApplication: (application: LoanApplication) => void;
   
+  // Savings State (persisted)
+  savings: SavingsState;
+  addSavingsDeposit: (amount: number, reference: string) => void;
+  setSavingsGoal: (monthlyGoal: number) => void;
+  
   // Demo Mode
   isDemoMode: boolean;
   toggleDemoMode: () => void;
@@ -61,6 +74,12 @@ const initialVerificationStatus: VerificationStatus = {
   employment: false,
   income: false,
   smsPermission: false,
+};
+
+const initialSavings: SavingsState = {
+  balance: 0,
+  transactions: [],
+  monthlyGoal: 0,
 };
 
 export const useAppStore = create<AppState>()(
@@ -99,6 +118,30 @@ export const useAppStore = create<AppState>()(
         applications: [...state.applications, application],
       })),
       
+      // Savings (persisted)
+      savings: initialSavings,
+      addSavingsDeposit: (amount: number, reference: string) => set((state) => {
+        const newTransaction: SavingsTransaction = {
+          id: `sav_${Date.now()}`,
+          goalId: 'default',
+          amount,
+          type: 'deposit',
+          reference,
+          status: 'successful',
+          createdAt: new Date(),
+        };
+        return {
+          savings: {
+            ...state.savings,
+            balance: state.savings.balance + amount,
+            transactions: [newTransaction, ...state.savings.transactions],
+          },
+        };
+      }),
+      setSavingsGoal: (monthlyGoal: number) => set((state) => ({
+        savings: { ...state.savings, monthlyGoal },
+      })),
+      
       // Demo Mode
       isDemoMode: true, // Default to demo mode for hackathon
       toggleDemoMode: () => set((state) => ({ isDemoMode: !state.isDemoMode })),
@@ -112,6 +155,7 @@ export const useAppStore = create<AppState>()(
         financialProfile: null,
         transactions: [],
         applications: [],
+        savings: initialSavings,
       }),
     }),
     {
@@ -123,6 +167,7 @@ export const useAppStore = create<AppState>()(
         verificationStatus: state.verificationStatus,
         financialProfile: state.financialProfile,
         applications: state.applications,
+        savings: state.savings,
         isDemoMode: state.isDemoMode,
       }),
     }
@@ -145,5 +190,14 @@ export const useDemoMode = () => useAppStore(
   useShallow((state) => ({
     isDemoMode: state.isDemoMode,
     toggle: state.toggleDemoMode,
+  }))
+);
+export const useSavings = () => useAppStore(
+  useShallow((state) => ({
+    balance: state.savings.balance,
+    transactions: state.savings.transactions,
+    monthlyGoal: state.savings.monthlyGoal,
+    addDeposit: state.addSavingsDeposit,
+    setGoal: state.setSavingsGoal,
   }))
 );

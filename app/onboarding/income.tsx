@@ -143,7 +143,7 @@ export default function IncomeScreen() {
     setFinancialProfile(profile);
 
     setIsAnalyzing(false);
-    router.push('/onboarding/complete');
+    router.push('/onboarding/expenses');
   };
 
   const incomeValue = parseIncomeValue(income);
@@ -162,10 +162,10 @@ export default function IncomeScreen() {
             className="p-0 mr-4"
           />
           <View className="flex-1">
-            <SimpleProgress current={4} total={5} />
+            <SimpleProgress current={4} total={6} />
           </View>
         </View>
-        <Text className="text-sm text-dark-500">Step 4 of 5</Text>
+        <Text className="text-sm text-dark-500">Step 4 of 6</Text>
       </View>
 
       <KeyboardAvoidingView 

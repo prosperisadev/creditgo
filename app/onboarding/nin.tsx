@@ -53,10 +53,10 @@ export default function NINScreen() {
             className="p-0 mr-4"
           />
           <View className="flex-1">
-            <SimpleProgress current={1} total={5} />
+            <SimpleProgress current={1} total={6} />
           </View>
         </View>
-        <Text className="text-sm text-dark-500">Step 1 of 5</Text>
+        <Text className="text-sm text-dark-500">Step 1 of 6</Text>
       </View>
 
       <KeyboardAvoidingView 
