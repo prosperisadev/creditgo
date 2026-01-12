@@ -53,7 +53,16 @@
           "photosPermission": "CreditGo needs access to your photos for document verification."
         }
       ],
-      "./plugins/withAndroidSizeOptimization.js"
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "enableProguardInReleaseBuilds": true,
+            "enableShrinkResourcesInReleaseBuilds": true,
+            "useLegacyPackaging": false
+          }
+        }
+      ]
     ],
     "extra": {
       "router": {},
