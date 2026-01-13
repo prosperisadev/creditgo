@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { 
   View, 
   Text, 
@@ -7,7 +7,11 @@ import {
   Modal,
   TextInput,
   Alert,
-  Linking
+  Linking,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  Keyboard
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { 
@@ -39,12 +43,14 @@ export default function WalletScreen() {
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [saveAmount, setSaveAmount] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<'card' | 'bank' | 'ussd'>('card');
 
   const safeAmount = financialProfile?.safeMonthlyRepayment || 0;
   const monthlyIncome = user?.monthlyIncome || 0;
+  const monthlyExpenses = user?.monthlyExpenses || 0;
   
-  // Suggested saving is 50% of safe amount (to build towards financing)
-  const suggestedSaving = Math.floor(safeAmount * 0.5);
+  // Suggested saving: 10% of stated income (simple and stable)
+  const suggestedSaving = Math.floor(monthlyIncome * 0.10);
 
   // Calculate totals from transactions
   const totalCredits = transactions
@@ -67,7 +73,9 @@ export default function WalletScreen() {
     return parseInt(formatted.replace(/\D/g, '')) || 0;
   };
 
-  const handleSave = () => {
+  const amountToSave = useMemo(() => parseAmount(saveAmount), [saveAmount]);
+
+  const handleSave = async () => {
     const amount = parseAmount(saveAmount);
     if (amount < 1000) {
       Alert.alert('Minimum Amount', 'Minimum saving amount is ₦1,000');
@@ -76,34 +84,41 @@ export default function WalletScreen() {
 
     setIsProcessing(true);
 
-    // Simulate Paystack payment flow
-    // In production, this would open Paystack checkout via react-native-paystack-webview
+    // Pitch-friendly flow:
+    // 1) Open a real Paystack demo checkout page in the browser
+    // 2) User returns and confirms payment
+    const reference = `CG_${Date.now()}`;
+
+    try {
+      if (paymentMethod === 'card') {
+        await Linking.openURL('https://paystack.com/demo/checkout');
+      }
+
+      if (paymentMethod === 'bank') {
+        await Linking.openURL('https://paystack.com/demo/checkout');
+      }
+
+      if (paymentMethod === 'ussd') {
+        await Linking.openURL('https://paystack.com/demo/checkout');
+      }
+    } catch {
+      // If opening the browser fails, we still allow user to proceed.
+    }
+
+    setIsProcessing(false);
+
     Alert.alert(
-      '💳 Paystack Payment',
-      `You're about to save ${formatNaira(amount)} via Paystack.\n\nIn production, this opens the secure Paystack checkout.\n\nFor demo, we'll simulate a successful payment.`,
+      'Complete Payment',
+      `After completing checkout, tap “I’ve Paid”.\n\nAmount: ${formatNaira(amount)}\nReference: ${reference}`,
       [
+        { text: 'Cancel', style: 'cancel' },
         {
-          text: 'Cancel',
-          style: 'cancel',
-          onPress: () => setIsProcessing(false),
-        },
-        {
-          text: 'Pay with Paystack',
+          text: "I've Paid",
           onPress: () => {
-            // Simulate payment processing
-            setTimeout(() => {
-              // Add to persisted savings
-              addDeposit(amount, `PAY_${Date.now()}`);
-              
-              setSaveAmount('');
-              setShowSaveModal(false);
-              setIsProcessing(false);
-              
-              Alert.alert(
-                '✅ Payment Successful!',
-                `${formatNaira(amount)} has been added to your savings.\n\nTotal savings: ${formatNaira(savingsBalance + amount)}\n\nReference: PAY_${Date.now()}`
-              );
-            }, 1500);
+            addDeposit(amount, reference);
+            setSaveAmount('');
+            setShowSaveModal(false);
+            Alert.alert('Saved', `${formatNaira(amount)} added to your savings.`);
           },
         },
       ]
@@ -166,8 +181,13 @@ export default function WalletScreen() {
             </View>
             <Text className="text-slate-500 text-xs">Monthly Income</Text>
             <Text className="text-slate-900 font-bold text-lg">
-              {formatNaira(totalCredits || monthlyIncome)}
+              {formatNaira(monthlyIncome)}
             </Text>
+            {totalCredits > 0 && (
+              <Text className="text-slate-400 text-[10px] mt-1">
+                From SMS: {formatNaira(totalCredits)}
+              </Text>
+            )}
           </View>
           <View className="flex-1 bg-white rounded-2xl p-4 ml-2 border border-slate-100">
             <View className="flex-row items-center mb-2">
@@ -177,8 +197,13 @@ export default function WalletScreen() {
             </View>
             <Text className="text-slate-500 text-xs">Expenses</Text>
             <Text className="text-slate-900 font-bold text-lg">
-              {formatNaira(totalDebits)}
+              {formatNaira(monthlyExpenses || totalDebits)}
             </Text>
+            {monthlyExpenses > 0 && totalDebits > 0 && (
+              <Text className="text-slate-400 text-[10px] mt-1">
+                From SMS: {formatNaira(totalDebits)}
+              </Text>
+            )}
           </View>
         </View>
 
@@ -207,7 +232,7 @@ export default function WalletScreen() {
           <View className="h-2 bg-slate-100 rounded-full overflow-hidden mb-2">
             <View 
               className="h-full bg-violet-500 rounded-full"
-              style={{ width: `${Math.min((savingsBalance / suggestedSaving) * 100, 100)}%` }}
+              style={{ width: `${suggestedSaving > 0 ? Math.min((savingsBalance / suggestedSaving) * 100, 100) : 0}%` }}
             />
           </View>
           <View className="flex-row justify-between">
@@ -318,7 +343,7 @@ export default function WalletScreen() {
             <View className="bg-white rounded-2xl p-6 items-center border border-slate-100">
               <Text className="text-slate-500 text-center">
                 No SMS transactions found.{'\n'}
-                Enable Demo Mode in your profile to see sample data.
+                If you granted SMS permission, check that your bank alerts are in your inbox.
               </Text>
             </View>
           )}
@@ -350,8 +375,12 @@ export default function WalletScreen() {
         transparent={true}
         onRequestClose={() => setShowSaveModal(false)}
       >
-        <View className="flex-1 bg-black/50 justify-end">
-          <View className="bg-white rounded-t-3xl p-5">
+        <Pressable className="flex-1 bg-black/50 justify-end" onPress={() => Keyboard.dismiss()}>
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            keyboardVerticalOffset={Platform.OS === 'ios' ? 10 : 0}
+          >
+            <Pressable className="bg-white rounded-t-3xl p-5" onPress={() => {}}>
             <View className="flex-row items-center justify-between mb-6">
               <Text className="text-xl font-bold text-slate-900">Add Money</Text>
               <TouchableOpacity 
@@ -396,41 +425,57 @@ export default function WalletScreen() {
             {/* Suggested Amount */}
             <View className="bg-lime-50 rounded-xl p-3 mb-6">
               <Text className="text-lime-800 text-sm">
-                💡 Suggested: Save {formatNaira(suggestedSaving)}/month to build your credit faster!
+                Suggested: Save {formatNaira(suggestedSaving)}/month to build your savings faster.
               </Text>
             </View>
 
             {/* Payment Methods */}
             <Text className="text-slate-500 text-sm mb-3">Payment method</Text>
             <View className="flex-row mb-6">
-              <View className="flex-1 bg-slate-900 rounded-xl p-3 mr-2 flex-row items-center justify-center">
-                <CreditCard size={16} color="#c8ff00" />
-                <Text className="text-white font-medium ml-2">Card</Text>
-              </View>
-              <View className="flex-1 bg-slate-100 rounded-xl p-3 mx-1 flex-row items-center justify-center">
-                <Building size={16} color="#64748b" />
-                <Text className="text-slate-600 font-medium ml-2">Bank</Text>
-              </View>
-              <View className="flex-1 bg-slate-100 rounded-xl p-3 ml-2 flex-row items-center justify-center">
-                <Smartphone size={16} color="#64748b" />
-                <Text className="text-slate-600 font-medium ml-2">USSD</Text>
-              </View>
+              <TouchableOpacity
+                onPress={() => setPaymentMethod('card')}
+                className={`flex-1 rounded-xl p-3 mr-2 flex-row items-center justify-center ${paymentMethod === 'card' ? 'bg-slate-900' : 'bg-slate-100'}`}
+                activeOpacity={0.8}
+              >
+                <CreditCard size={16} color={paymentMethod === 'card' ? '#c8ff00' : '#64748b'} />
+                <Text className={`${paymentMethod === 'card' ? 'text-white' : 'text-slate-600'} font-medium ml-2`}>Card</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={() => setPaymentMethod('bank')}
+                className={`flex-1 rounded-xl p-3 mx-1 flex-row items-center justify-center ${paymentMethod === 'bank' ? 'bg-slate-900' : 'bg-slate-100'}`}
+                activeOpacity={0.8}
+              >
+                <Building size={16} color={paymentMethod === 'bank' ? '#c8ff00' : '#64748b'} />
+                <Text className={`${paymentMethod === 'bank' ? 'text-white' : 'text-slate-600'} font-medium ml-2`}>Bank</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={() => setPaymentMethod('ussd')}
+                className={`flex-1 rounded-xl p-3 ml-2 flex-row items-center justify-center ${paymentMethod === 'ussd' ? 'bg-slate-900' : 'bg-slate-100'}`}
+                activeOpacity={0.8}
+              >
+                <Smartphone size={16} color={paymentMethod === 'ussd' ? '#c8ff00' : '#64748b'} />
+                <Text className={`${paymentMethod === 'ussd' ? 'text-white' : 'text-slate-600'} font-medium ml-2`}>USSD</Text>
+              </TouchableOpacity>
             </View>
 
             {/* Save Button */}
             <TouchableOpacity
               onPress={handleSave}
+              disabled={isProcessing}
               className="bg-lime-400 rounded-xl py-4 items-center"
               activeOpacity={0.8}
             >
               <Text className="text-slate-900 font-bold text-lg">
-                Save {saveAmount ? formatNaira(parseAmount(saveAmount)) : '₦0'}
+                {isProcessing ? 'Opening checkout…' : `Continue (${paymentMethod.toUpperCase()}) • ${amountToSave ? formatNaira(amountToSave) : '₦0'}`}
               </Text>
             </TouchableOpacity>
 
             <View className="h-8" />
-          </View>
-        </View>
+            </Pressable>
+          </KeyboardAvoidingView>
+        </Pressable>
       </Modal>
     </SafeAreaView>
   );

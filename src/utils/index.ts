@@ -230,9 +230,18 @@ export const analyzeSMSTransactions = (transactions: SMSTransaction[]): SMSAnaly
   
   const totalCredits = credits.reduce((sum, t) => sum + t.amount, 0);
   const totalDebits = debits.reduce((sum, t) => sum + t.amount, 0);
-  
-  // Calculate average monthly income (assuming 2 months of data in demo)
-  const averageMonthlyIncome = totalCredits / 2;
+
+  // Calculate average monthly income based on the observed date range.
+  // This avoids severe underestimation when we have >2 months of SMS data.
+  const timestamps = transactions
+    .map(t => (t.date instanceof Date ? t.date.getTime() : new Date(t.date as any).getTime()))
+    .filter((ts) => Number.isFinite(ts));
+
+  const minTs = timestamps.length ? Math.min(...timestamps) : Date.now();
+  const maxTs = timestamps.length ? Math.max(...timestamps) : Date.now();
+  const days = Math.max(1, Math.ceil((maxTs - minTs) / (1000 * 60 * 60 * 24)));
+  const monthsObserved = Math.max(1, Math.ceil(days / 30));
+  const averageMonthlyIncome = monthsObserved > 0 ? totalCredits / monthsObserved : totalCredits;
   
   // Check income consistency (regular salary = high consistency)
   const salaryCredits = credits.filter(t => t.source === 'Salary');
@@ -380,7 +389,7 @@ export const generateBadges = (
     badges.push({
       id: 'identity_verified',
       name: 'Identity Verified',
-      description: 'NIN verified with biometric match',
+      description: 'Identity verification completed',
       icon: 'shield-check',
       earnedAt: now,
     });

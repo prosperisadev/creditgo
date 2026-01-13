@@ -234,8 +234,8 @@ export default function EmploymentVerifyScreen() {
                       Email saved
                     </Text>
                     <Text className="text-blue-700 text-sm mt-1">
-                      Your employer isn't in our verified list yet, but you can still continue. 
-                      We'll verify through other means.
+                      Your employer isn't in our verified list yet — no problem.
+                      We'll still calculate your Safe Amount from your income and spending.
                     </Text>
                   </View>
                 </View>

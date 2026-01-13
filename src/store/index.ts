@@ -52,10 +52,6 @@ interface AppState {
   addSavingsDeposit: (amount: number, reference: string) => void;
   setSavingsGoal: (monthlyGoal: number) => void;
   
-  // Demo Mode
-  isDemoMode: boolean;
-  toggleDemoMode: () => void;
-  
   // Reset
   resetState: () => void;
 }
@@ -142,10 +138,6 @@ export const useAppStore = create<AppState>()(
         savings: { ...state.savings, monthlyGoal },
       })),
       
-      // Demo Mode
-      isDemoMode: true, // Default to demo mode for hackathon
-      toggleDemoMode: () => set((state) => ({ isDemoMode: !state.isDemoMode })),
-      
       // Reset
       resetState: () => set({
         user: null,
@@ -168,7 +160,6 @@ export const useAppStore = create<AppState>()(
         financialProfile: state.financialProfile,
         applications: state.applications,
         savings: state.savings,
-        isDemoMode: state.isDemoMode,
       }),
     }
   )
@@ -186,12 +177,6 @@ export const useOnboarding = () => useAppStore(
 );
 export const useFinancialProfile = () => useAppStore((state) => state.financialProfile);
 export const useVerificationStatus = () => useAppStore((state) => state.verificationStatus);
-export const useDemoMode = () => useAppStore(
-  useShallow((state) => ({
-    isDemoMode: state.isDemoMode,
-    toggle: state.toggleDemoMode,
-  }))
-);
 export const useSavings = () => useAppStore(
   useShallow((state) => ({
     balance: state.savings.balance,
